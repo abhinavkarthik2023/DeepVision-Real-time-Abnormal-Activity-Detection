@@ -1,16 +1,12 @@
-import os
 import cv2
-import json
 import numpy as np
 import streamlit as st
-import tempfile
 from tensorflow.keras.models import load_model
 import imutils
+import json
+import tempfile
+import os
 
-@st.cache(allow_output_mutation=True)
-def load_our_model():
-    return load_model(os.path.join("model", "saved_model.keras"))
-    
 def mean_squared_loss(x1, x2):
     diff = x1 - x2
     a, b, c, d, e = diff.shape
@@ -22,8 +18,11 @@ def mean_squared_loss(x1, x2):
 
     return mean_distance
 
+# Load the Keras model
+model = load_model("model\\saved_model.keras")
+
 # Function to perform anomaly detection on video frames and save abnormal frames
-def detect_anomalies(video_file_path, model):
+def detect_anomalies(video_file_path):
     cap = cv2.VideoCapture(video_file_path)
     if not cap.isOpened():
         st.error("Error opening video file.")
@@ -32,14 +31,19 @@ def detect_anomalies(video_file_path, model):
     frame_count = 0
     im_frames = []
     abnormal_frames = []
+
+    # Create the 'abnormality_app' folder if it doesn't exist
     os.makedirs('abnormality_app', exist_ok=True)
-   
+
     while cap.isOpened():
         ret, frame = cap.read()
+
         if not ret:
             break
+
         frame_count += 1
-        image = imutils.resize(frame, width=700)
+
+        image = imutils.resize(frame, width=700, height=600)
         frame = cv2.resize(frame, (227, 227), interpolation=cv2.INTER_AREA)
         gray = 0.2989 * frame[:,:,0] + 0.5870 * frame[:,:,1] + 0.1140 * frame[:,:,2]
         gray = (gray - gray.mean()) / gray.std()
@@ -47,31 +51,44 @@ def detect_anomalies(video_file_path, model):
         im_frames.append(gray)
 
         if frame_count % 10 == 0:
-            im_frames = np.array(im_frames).reshape(1, 227, 227, 10, 1)
+            im_frames = np.array(im_frames)
+            im_frames.resize(227, 227, 10)
+            im_frames = np.expand_dims(im_frames, axis=0)
+            im_frames = np.expand_dims(im_frames, axis=4)
+
             output = model.predict(im_frames)
+
             loss = mean_squared_loss(im_frames, output)
 
             if 0.00032 < loss < 0.00038:
                 st.error('🚨 Abnormal Event Detected 🚨')
-                st.image(image, channels="BGR")
-                cv2.imwrite(os.path.join('abnormality_app', f'frame_{frame_count}.jpg'), image)
+                st.image(image, caption="", channels="BGR")
                 abnormal_frames.append(frame_count)
+
+                # Save abnormal frame as JPEG in the 'abnormality_app' folder
+                cv2.imwrite(f'abnormality_app/frame_{frame_count}.jpg', image)
+
             im_frames = []
-            
+
+        if cv2.waitKey(5) & 0xFF == ord('q'):
+            break
+
     cap.release()
-   
+    cv2.destroyAllWindows()
 
     # Save abnormal frames indices to JSON
     with open('abnormal_frames.json', 'w') as json_file:
         json.dump(abnormal_frames, json_file)
 
 # Streamlit code for file upload and anomaly detection
-model = load_our_model()
-st.title("DeepVision: Real-time Abnormal Activity Detection")
+st.markdown("<h1 style='text-align: center; color: #006699;'>DeepVision: Real-time Abnormal Activity Detection 👁️</h1>", unsafe_allow_html=True)
 uploaded_file = st.file_uploader("Upload a video file", type=["mp4", "avi", "mov"])
 
 if uploaded_file is not None:
     with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
         tmp_file.write(uploaded_file.read())
-        detect_anomalies(tmp_file.name, model)
-        os.unlink(tmp_file.name)
+        tmp_file_path = tmp_file.name
+
+    detect_anomalies(tmp_file_path)
+
+    os.unlink(tmp_file_path)
