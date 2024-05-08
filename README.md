@@ -43,9 +43,7 @@ You can download the dataset from here - <a href = "http://www.cse.cuhk.edu.hk/l
 ## How to Use
 1. Clone this repository to your local machine:
 
-```bash
-git clone https://github.com/jaigane6387/DeepEYE_Video_Surviellience.git
-```
+
 2. Install the required dependencies:
 ```bash
 pip install -r requirements.txt
@@ -90,8 +88,6 @@ docker run -it --rm -p 5000:5000 myapp
 
 ## Output
 
-<!-- Example GIF -->
-<img src="results/live.png" width="1000">
 
 ## Tech Stack
 
