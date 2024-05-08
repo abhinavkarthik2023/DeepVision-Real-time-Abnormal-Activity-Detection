@@ -34,7 +34,7 @@ def detect_anomalies(video_file_path, model):
     abnormal_frames = []
     os.makedirs('abnormality_app', exist_ok=True)
    
- while cap.isOpened():
+    while cap.isOpened():
         ret, frame = cap.read()
         if not ret:
             break
